@@ -1,0 +1,42 @@
+services:
+  consul:
+    image: hashicorp/consul:1.15.2 
+    container_name: consul
+    hostname: consul-server
+    restart: unless-stopped
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    command: ["consul", "agent", "-server", "-bootstrap", "-ui", "-client=0.0.0.0", "-data-dir=/consul/data"]
+    volumes:
+      - consul_data:/consul/data
+    networks:
+      - managenv
+
+  vault:
+    image: hashicorp/vault:1.14.0
+    container_name: vault
+    hostname: vault-server
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: "http://vault-server:8200"
+    command: "vault server -config=/vault/config/config.hcl"
+    volumes:
+      - vault_data:/vault/data
+      - ./vault/config.hcl:/vault/config/config.hcl
+    networks:
+      - managenv
+    depends_on:
+      - consul
+
+networks:
+  managenv:
+    external: true
+
+volumes:
+  consul_data:
+  vault_data:

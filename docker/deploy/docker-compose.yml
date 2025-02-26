@@ -1,0 +1,22 @@
+services:
+  app_managenv:
+    image: app_managenv:v.1.0
+    container_name: app_managenv
+    hostname: app_managenv
+    build:
+      context: ./../../ 
+      dockerfile: ./docker/deploy/Dockerfile
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - managenv   
+    environment: 
+      - ENV=${ENV} 
+      - HOST=${HOST} 
+      - FILE=${FILE}
+networks:
+  managenv:
+    external: true

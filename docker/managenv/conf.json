@@ -1,0 +1,23 @@
+{
+    "internal":{
+        "logger" : "trace",
+        "core" : 2 
+    },
+    "interval":{
+        "environment" : 60,
+        "schedulle" : 10 
+    },
+    "database" : {
+        "host" : "localhost",
+        "port" : 5432,
+        "name" : "smartcity",
+        "user" : "budakcorporate",
+        "pass" : "buruhtani"
+    },
+    "rabbit" : {
+        "host" : "amqp://guest:guest@localhost:5672/",
+        "tag"  : "app-smartcity",
+        "que"  : "smartcity",
+		"key"  : ["traffic_lights"]
+    }
+}
