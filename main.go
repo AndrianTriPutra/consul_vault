@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"managenv/app"
@@ -59,7 +60,9 @@ func main() {
 	log.Println(" ================== [RUN] ================== ")
 
 	ctx := context.Background()
-	wg := new(sync.WaitGroup)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	stoped := make(chan os.Signal, 1)
 	signal.Notify(stoped,
 		syscall.SIGHUP,
@@ -67,39 +70,53 @@ func main() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
+	// Error channel and wait group
+	errChan := make(chan error, 2) // buffer adjusted number of goroutines
+	wg := new(sync.WaitGroup)
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
-		runtime.Gosched()
-		err := application.ReadEnv(ctx)
-		if err != nil {
-			logger.Level("fatal", "main", "exit ReadEnv:"+err.Error())
+		if err := application.ReadEnv(ctx); err != nil {
+			errChan <- fmt.Errorf("readEnv: %w", err)
 		}
+		cancel()
 	}()
 
 	go func() {
 		defer wg.Done()
-		runtime.Gosched()
-		err := application.Schedulle(ctx)
-		if err != nil {
-			logger.Level("fatal", "main", "exit Schedulle:"+err.Error())
+		if err := application.Schedulle(ctx); err != nil {
+			errChan <- fmt.Errorf("schedulle: %w", err)
 		}
+		cancel()
 	}()
 
-	message := ""
-	s := <-stoped
-	switch s {
-	case syscall.SIGHUP:
-		message = "[hungup]"
-	case syscall.SIGINT:
-		message = "[interupt]"
-	case syscall.SIGTERM:
-		message = "[force stop]"
-	case syscall.SIGQUIT:
-		message = "[stop and core dump]"
-	default:
-		message = "[unknown signal]"
+	// Select for stop signal or error
+	var errN error
+	var message string
+	select {
+	case s := <-stoped:
+		switch s {
+		case syscall.SIGHUP:
+			message = "[hungup]"
+		case syscall.SIGINT:
+			message = "[interrupt]"
+		case syscall.SIGTERM:
+			message = "[force stop]"
+		case syscall.SIGQUIT:
+			message = "[stop and core dump]"
+		default:
+			message = "[unknown signal]"
+		}
+		errN = errors.New(message)
+		cancel()
+
+	case err := <-errChan:
+		errN = err
+		cancel()
 	}
-	logger.Level("info", "Run", message)
+
+	wg.Wait()
+
+	logger.Level("info", "main", "stop:"+errN.Error())
 }
