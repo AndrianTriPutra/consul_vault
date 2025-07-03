@@ -18,15 +18,16 @@ func (a apps) ReadEnv(ctx context.Context) error {
 			environment, err := env.ReadEnv_Consul(a.setting.Conf)
 			if err != nil {
 				logger.Level("error", "ReadEnv_Consul", err.Error())
-			} else {
-				jsNow, _ := json.MarshalIndent(environment, " ", " ")
-				logger.Level("debug", "config Now", string(jsNow))
+				continue
+			}
 
-				jsExist, _ := json.MarshalIndent(a.setting.Env, " ", " ")
-				if string(jsNow) != string(jsExist) {
-					logger.Level("info", "compare", "config now and exist its different, RESTART service")
-					os.Exit(1)
-				}
+			jsNow, _ := json.MarshalIndent(environment, " ", " ")
+			logger.Level("debug", "config Now", string(jsNow))
+
+			jsExist, _ := json.MarshalIndent(a.setting.Env, " ", " ")
+			if string(jsNow) != string(jsExist) {
+				logger.Level("info", "compare", "config now and exist its different, RESTART service")
+				os.Exit(1)
 			}
 
 		case <-ctx.Done():
